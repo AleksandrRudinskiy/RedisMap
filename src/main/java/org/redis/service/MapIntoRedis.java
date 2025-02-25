@@ -6,10 +6,7 @@ import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPoolConfig;
 
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Stream;
 
 /**
@@ -24,7 +21,7 @@ public class MapIntoRedis implements Map<String, String> {
      * Экземпляр класса JedisPool присоединённый к хосту 127.0.0.1 на пору 6379
      */
     private final JedisPoolConfig poolConfig = new JedisPoolConfig();
-    private final JedisPool jedisPool = new JedisPool(poolConfig, "127.0.0.1", 6379);
+    private final JedisPool jedisPool = new JedisPool(poolConfig, "localhost", 6379);
     private final Jedis jedis = jedisPool.getResource();
 
     /**
@@ -113,16 +110,11 @@ public class MapIntoRedis implements Map<String, String> {
     public String get(Object key) {
         String res = "";
         Jedis jedisLocal = null;
-        try {
-            jedisLocal = jedisPool.getResource();
-            res = jedisLocal.get(key.toString());
-        } catch (RuntimeException exception) {
-            log.error("Uncaught exception.", exception);
-            throw exception;
-        } finally {
-            jedisPool.returnObject(jedisLocal);
-        }
-        return res;
+
+        jedisLocal = jedisPool.getResource();
+        res = jedisLocal.get(key.toString());
+
+        return jedisLocal.get((String) key);
     }
 
     /**
@@ -134,18 +126,8 @@ public class MapIntoRedis implements Map<String, String> {
      */
     @Override
     public String put(String key, String value) {
-        Jedis jedisLocal = null;
-        String valueInMap;
-        try {
-            jedisLocal = jedisPool.getResource();
-            valueInMap = jedisLocal.get(key);
-        } catch (RuntimeException exception) {
-            log.error("Uncaught exception.", exception);
-            throw exception;
-        } finally {
-            jedisPool.returnObject(jedisLocal);
-        }
-        return valueInMap;
+        jedis.set(key, value);
+        return null;
     }
 
     /**
@@ -195,55 +177,27 @@ public class MapIntoRedis implements Map<String, String> {
      */
     @Override
     public void clear() {
-        Jedis jedisLocal = null;
-        try {
-            jedisLocal = jedisPool.getResource();
-            jedisLocal.flushAll();
-        } catch (RuntimeException exception) {
-            log.error("Uncaught exception.", exception);
-            throw exception;
-        } finally {
-            jedisPool.returnObject(jedisLocal);
-        }
+        jedis.flushDB();
     }
 
     @Override
     public Set<String> keySet() {
-        Set<String> res;
-        Jedis jedisLocal = null;
-        try {
-            jedisLocal = jedisPool.getResource();
-            res = jedisLocal.keys("*");
-            log.info("Res {}", res);
-        } catch (RuntimeException exception) {
-            log.error("Uncaught exception.", exception);
-            throw exception;
-        } finally {
-            jedisPool.returnObject(jedisLocal);
-        }
-        return res;
+        return new HashSet<>(jedis.keys("*"));
     }
 
     @Override
     public Collection<String> values() {
-        Collection<String> res;
-        Jedis jedisLocal = null;
-        try {
-            jedisLocal = jedisPool.getResource();
-            jedisLocal.connect();
-            jedisLocal = jedisPool.getResource();
-            res = jedis.mget(this.keySet().toArray(new String[0]));
-        } catch (RuntimeException exception) {
-            log.error("Uncaught exception.", exception);
-            throw exception;
-        } finally {
-            jedisPool.returnObject(jedisLocal);
+        Set<String> keys = new HashSet<>(jedis.keys("*"));
+        List<String> values = new ArrayList<>();
+        for (String key : keys) {
+            String value = jedis.get(key);
+            values.add(value);
         }
-        return res;
+        return values;
     }
 
     @Override
     public Set<Entry<String, String>> entrySet() {
-        return new HashSet<>();
+        return null;
     }
 }

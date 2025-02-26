@@ -56,4 +56,35 @@ public class MapIntoRedisTest {
         assertTrue(mapIntoRedis.isEmpty(),
                 "Должен быть ответ true");
     }
+
+    @Test
+    public void shouldReturnTrueWhenContainValue() {
+        mapIntoRedis.clear();
+        mapIntoRedis.put("k1", "val1");
+        mapIntoRedis.put("k2", "val2");
+        assertTrue(mapIntoRedis.containsValue("val2"),
+                "Должен быть ответ true");
+    }
+
+    @Test
+    public void shouldReturnFalseWhenNotContainValue() {
+        mapIntoRedis.clear();
+        mapIntoRedis.put("k1", "val1");
+        mapIntoRedis.put("k2", "val2");
+        assertFalse(mapIntoRedis.containsValue("val256"),
+                "Должен быть ответ false");
+    }
+
+    @Test
+    public void shouldBeSize1AfterRemove() {
+        mapIntoRedis.clear();
+        mapIntoRedis.put("k1", "val1");
+        mapIntoRedis.put("k2", "val2");
+        assertEquals(mapIntoRedis.size(), 2,
+                "Размерность Map должна быть 2");
+        mapIntoRedis.remove("k2");
+        assertEquals(mapIntoRedis.size(), 1,
+                "Размерность Map должна стать 1");
+    }
+
 }

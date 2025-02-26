@@ -3,6 +3,9 @@ package org.redis;
 import org.redis.service.MapIntoRedis;
 import org.testng.annotations.Test;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import static org.testng.Assert.*;
 
 
@@ -85,6 +88,19 @@ public class MapIntoRedisTest {
         mapIntoRedis.remove("k2");
         assertEquals(mapIntoRedis.size(), 1,
                 "Размерность Map должна стать 1");
+    }
+
+    @Test
+    public void shouldBeSize4AfterPutAll() {
+        mapIntoRedis.clear();
+        mapIntoRedis.put("k1", "val1");
+        mapIntoRedis.put("k2", "val2");
+        Map<String, String> m = new HashMap<>();
+        m.put("k3", "val3");
+        m.put("k4", "val4");
+        mapIntoRedis.putAll(m);
+        assertEquals(mapIntoRedis.size(), 4,
+                "Размерность Map должна стать 4");
     }
 
 }

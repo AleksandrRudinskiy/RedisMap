@@ -7,7 +7,6 @@ import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPoolConfig;
 
 import java.util.*;
-import java.util.stream.Stream;
 
 /**
  * Класс-прослойка между Redis и Map
@@ -15,10 +14,9 @@ import java.util.stream.Stream;
 @RequiredArgsConstructor
 @Slf4j
 public class MapIntoRedis implements Map<String, String> {
-    private final String URL = "localhost";
 
     /**
-     * Экземпляр класса JedisPool присоединённый к хосту 127.0.0.1 на пору 6379
+     * Экземпляр класса JedisPool присоединённый к хосту "localhost" на пору 6379
      */
     private final JedisPoolConfig poolConfig = new JedisPoolConfig();
     private final JedisPool jedisPool = new JedisPool(poolConfig, "localhost", 6379);
@@ -31,13 +29,7 @@ public class MapIntoRedis implements Map<String, String> {
      */
     @Override
     public int size() {
-        Jedis jedisLocal = null;
-        try {
-            jedisLocal = jedisPool.getResource();
-            return (int) jedisLocal.dbSize();
-        } finally {
-            jedisPool.returnObject(jedisLocal);
-        }
+        return jedis.keys("*").size();
     }
 
     /**
@@ -47,18 +39,7 @@ public class MapIntoRedis implements Map<String, String> {
      */
     @Override
     public boolean isEmpty() {
-        boolean res;
-        Jedis jedisLocal = null;
-        try {
-            jedisLocal = jedisPool.getResource();
-            res = jedisLocal.dbSize() == 0L;
-        } catch (RuntimeException exception) {
-            log.error("Uncaught exception.", exception);
-            throw exception;
-        } finally {
-            jedisPool.returnObject(jedisLocal);
-        }
-        return res;
+        return jedis.keys("*").isEmpty();
     }
 
     /**
@@ -69,35 +50,19 @@ public class MapIntoRedis implements Map<String, String> {
      */
     @Override
     public boolean containsKey(Object key) {
-        boolean res;
-        Jedis jedisLocal = null;
-        try {
-            jedisLocal = jedisPool.getResource();
-            res = jedisLocal.exists(key.toString());
-        } catch (RuntimeException exception) {
-            log.error("Uncaught exception.", exception);
-            throw exception;
-        } finally {
-            jedisPool.returnObject(jedisLocal);
-        }
-        return res;
+        return jedis.get(key.toString()) != null;
     }
 
     @Override
     public boolean containsValue(Object value) {
-        boolean res;
-        Jedis jedisLocal = null;
-        try {
-            jedisLocal = jedisPool.getResource();
-            Collection<String> strings = this.values();
-            res = strings.contains(value.toString());
-        } catch (RuntimeException exception) {
-            log.error("Uncaught exception.", exception);
-            throw exception;
-        } finally {
-            jedisPool.returnObject(jedisLocal);
+        Set<String> keys = jedis.keys("*");
+        for (String key : keys) {
+            String currentValue = jedis.get(key);
+            if (currentValue.equals(value.toString())) {
+                return true;
+            }
         }
-        return res;
+        return false;
     }
 
     /**
@@ -108,13 +73,7 @@ public class MapIntoRedis implements Map<String, String> {
      */
     @Override
     public String get(Object key) {
-        String res = "";
-        Jedis jedisLocal = null;
-
-        jedisLocal = jedisPool.getResource();
-        res = jedisLocal.get(key.toString());
-
-        return jedisLocal.get((String) key);
+        return jedis.get(key.toString());
     }
 
     /**
@@ -126,30 +85,32 @@ public class MapIntoRedis implements Map<String, String> {
      */
     @Override
     public String put(String key, String value) {
-        jedis.set(key, value);
-        return null;
+        if (!containsKey(key)) {
+            jedis.set(key, value);
+            return null;
+        } else {
+            String oldValue = jedis.get(key);
+            jedis.set(key, value);
+            return oldValue;
+        }
     }
 
     /**
-     * Метод позволяет удалить значение по ключу
+     * Метод удаляет запись из БД по ключу
      *
-     * @param key собственно ключ типа String
-     * @return String тип возвращаемого значения
+     * @param key ключ типа String
+     * @return String тип возвращаемого значения.
+     * Возвращает значение если ключ находился в БД и null если ключ отсутствовал
      */
     @Override
     public String remove(Object key) {
-        String valueInMap;
-        Jedis jedisLocal = null;
-        try {
-            jedisLocal = jedisPool.getResource();
-            valueInMap = jedisLocal.get(key.toString());
-        } catch (RuntimeException exception) {
-            log.error("Uncaught exception.", exception);
-            throw exception;
-        } finally {
-            jedisPool.returnObject(jedisLocal);
+        if (containsKey(key)) {
+            String value = get(key);
+            jedis.del(key.toString());
+            return value;
+        } else {
+            return null;
         }
-        return valueInMap;
     }
 
     /**
@@ -159,16 +120,9 @@ public class MapIntoRedis implements Map<String, String> {
      */
     @Override
     public void putAll(Map<? extends String, ? extends String> m) {
-        Jedis jedisLocal = null;
-        try {
-            jedisLocal = jedisPool.getResource();
-            String[] set = m.entrySet().stream().flatMap(t -> Stream.of(t.getKey(), t.getValue())).toArray(String[]::new);
-            jedisLocal.mset(set);
-        } catch (RuntimeException exception) {
-            log.error("Uncaught exception.", exception);
-            throw exception;
-        } finally {
-            jedisPool.returnObject(jedisLocal);
+        Set<?> keys = m.keySet();
+        for (Object key : keys) {
+            jedis.set(key.toString(), m.get(key.toString()));
         }
     }
 
@@ -198,6 +152,13 @@ public class MapIntoRedis implements Map<String, String> {
 
     @Override
     public Set<Entry<String, String>> entrySet() {
-        return null;
+        Set<Entry<String, String>> result = new HashSet<>();
+        Set<String> keys = new HashSet<>(jedis.keys("*"));
+        for (String key : keys) {
+            String value = jedis.get(key);
+            Entry<String, String> entry = new AbstractMap.SimpleEntry<>(key, value);
+            result.add(entry);
+        }
+        return result;
     }
 }

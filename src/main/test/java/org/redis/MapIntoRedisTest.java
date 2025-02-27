@@ -3,12 +3,16 @@ package org.redis;
 import org.redis.service.MapIntoRedis;
 import org.testng.annotations.Test;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.testng.Assert.*;
 
-
+/**
+ * Перед запуском тестов необходимо поднятие redis командой: docker-compose up -d
+ */
 public class MapIntoRedisTest {
     private final MapIntoRedis mapIntoRedis = new MapIntoRedis();
 
@@ -101,6 +105,20 @@ public class MapIntoRedisTest {
         mapIntoRedis.putAll(m);
         assertEquals(mapIntoRedis.size(), 4,
                 "Размерность Map должна стать 4");
+    }
+
+    @Test
+    public void shouldReturnCollectionSize2() {
+        mapIntoRedis.clear();
+        mapIntoRedis.put("k1", "val1");
+        mapIntoRedis.put("k2", "val2");
+        List<String> values = new ArrayList<>(mapIntoRedis.values());
+        assertEquals(values.size(), 2,
+                "Размерность values должна быть 2");
+        assertEquals(values.get(0), "val1",
+                "Первый элемент должен быть val1");
+        assertEquals(values.get(1), "val2",
+                "Второй элемент должен быть val2");
     }
 
 }

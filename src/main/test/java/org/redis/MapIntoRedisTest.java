@@ -3,10 +3,7 @@ package org.redis;
 import org.redis.service.MapIntoRedis;
 import org.testng.annotations.Test;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static org.testng.Assert.*;
 
@@ -119,6 +116,19 @@ public class MapIntoRedisTest {
                 "Первый элемент должен быть val1");
         assertEquals(values.get(1), "val2",
                 "Второй элемент должен быть val2");
+    }
+
+    @Test
+    public void shouldReturnEntrySet() {
+        mapIntoRedis.clear();
+        mapIntoRedis.put("k1", "val1");
+        mapIntoRedis.put("k2", "val2");
+        Map.Entry<String, String> entry1 = new AbstractMap.SimpleEntry<>("k1", "val1");
+        Map.Entry<String, String> entry2 = new AbstractMap.SimpleEntry<>("k2", "val2");
+        Set<Map.Entry<String, String>> set = new HashSet<>();
+        set.add(entry1);
+        set.add(entry2);
+        assertEquals(mapIntoRedis.entrySet(), set, "Неверно вернулся EntrySet");
     }
 
 }
